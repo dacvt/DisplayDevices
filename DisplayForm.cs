@@ -102,12 +102,11 @@ namespace DisplayDevices
             return result;
         }
 
-        private void settingBtn_Click(object sender, EventArgs e)
+        private void SettingsToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Point location = this.PointToScreen(new Point(this.Left, this.Bottom));
             if (settingForm == null || settingForm.IsDisposed)
             {
-                settingForm = new SettingForm(location, this.panel);
+                settingForm = new SettingForm(this, this.panel);
             }
             panel.Show();
             panel.BringToFront();
@@ -119,6 +118,11 @@ namespace DisplayDevices
                 }
             };
             settingForm.Show();
+        }
+
+        public void ShowLog()
+        {
+            Console.Write("Hello World");
         }
     }
 }

@@ -13,12 +13,13 @@ namespace DisplayDevices
     public partial class SettingForm : Form
     {
         private GlassyPanel panel;
-        public SettingForm(Point startLocation, GlassyPanel panel)
+        private DisplayForm displayForm;
+        public SettingForm(DisplayForm displayForm, GlassyPanel panel)
         {
             InitializeComponent();
             FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.Left = startLocation.X;
-            this.Top = startLocation.Y;
+            this.CenterToParent();
+            this.displayForm = displayForm;
             this.panel = panel;
         }
 
@@ -31,6 +32,11 @@ namespace DisplayDevices
         {
             this.panel.Hide();
             this.panel.SendToBack();
+        }
+
+        private void ConfirmBtn_Click(object sender, EventArgs e)
+        {
+            this.displayForm.ShowLog();
         }
     }
 }

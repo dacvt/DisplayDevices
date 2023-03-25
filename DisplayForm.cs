@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.Diagnostics;
-using System.Windows;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Management;
 
 namespace DisplayDevices
 {
@@ -21,9 +19,15 @@ namespace DisplayDevices
         private const int DEVICE_WIDTH_FORM = 345;
         private const int DEVICE_HEIGHT_FORM = 637;
         private const int PADDING_FROM_RIGHT = 5; // padding increase if has more device
+        private const int DEFAULT_COLUMN = 3;
 
         SettingForm settingForm;
         private GlassyPanel panel;
+        private readonly List<Process> processList = new List<Process>();
+        private List<IntPtr> deviceDisps;
+
+        private ManagementEventWatcher processStartEvent = new ManagementEventWatcher("SELECT * FROM Win32_ProcessStartTrace");
+        private ManagementEventWatcher processStopEvent = new ManagementEventWatcher("SELECT * FROM Win32_ProcessStopTrace");
 
         [DllImport("user32.dll", SetLastError = true)]
         static extern IntPtr GetForegroundWindow();
@@ -48,10 +52,12 @@ namespace DisplayDevices
         public DisplayForm()
         {
             InitializeComponent();
-            panel = new GlassyPanel();
-            panel.Width = this.Width;
-            panel.Height = this.Height;
-            panel.Dock = DockStyle.Fill;
+            panel = new GlassyPanel
+            {
+                Width = this.Width,
+                Height = this.Height,
+                Dock = DockStyle.Fill
+            };
             this.Controls.Add(panel);
             panel.Hide();
             panel.SendToBack();
@@ -59,23 +65,103 @@ namespace DisplayDevices
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            List<IntPtr> deviceDisps = GetAllDeviceDisps();
+            this.OpenDeviceScreen();
+            deviceDisps = GetAllDeviceDisps();
+            DisplayDevices(DEFAULT_COLUMN);
+        }
+
+        public void DisplayDevices (int column)
+        {
             int numDevice = deviceDisps.Count;
-            int paddingFromRight = 0;
-            if (1 < numDevice)
+            int columnDisp = column;
+            if (columnDisp < DEFAULT_COLUMN || numDevice < DEFAULT_COLUMN)
             {
-                paddingFromRight = numDevice * (PADDING_FROM_RIGHT + numDevice);
+                columnDisp = DEFAULT_COLUMN;
+            } else if (numDevice < column)
+            {
+                columnDisp = numDevice;
+            }
+            int rowDisp = numDevice / columnDisp;
+            if (numDevice % columnDisp != 0)
+            {
+                rowDisp += 1;
+            }
+            int paddingFromRight = 0;
+            if (1 < columnDisp)
+            {
+                paddingFromRight = columnDisp * (PADDING_FROM_RIGHT + columnDisp);
             }
             if (numDevice != 0)
             {
-                this.Size = new Size(numDevice * DEVICE_WIDTH_FORM - paddingFromRight, 1 * DEVICE_HEIGHT_FORM + DEVICE_MARGIN_TOP);
+                this.Size = new Size(columnDisp * DEVICE_WIDTH_FORM - paddingFromRight, rowDisp * DEVICE_HEIGHT_FORM + DEVICE_MARGIN_TOP);
             }
-            int index = 0;
+            int indexCol = 0;
+            int indexRow = 0;
             foreach (IntPtr deviceDisp in deviceDisps)
             {
                 SetParent(deviceDisp, this.Handle);
-                MoveWindow(deviceDisp, index * DEVICE_WIDTH, DEVICE_MARGIN_TOP, DEVICE_WIDTH, DEVICE_HEIGHT, true);
-                index++;
+                if (columnDisp == indexCol)
+                {
+                    indexCol = 0;
+                    indexRow += 1;
+                }
+                MoveWindow(deviceDisp, indexCol * DEVICE_WIDTH, indexRow * DEVICE_HEIGHT + DEVICE_MARGIN_TOP, DEVICE_WIDTH, DEVICE_HEIGHT, true);
+                indexCol++;
+            }
+            int numNullDevice = numDevice - deviceDisps.Count;
+            for (int i = 0; i < numNullDevice; i++)
+            {
+                IntPtr emptyDevice = IntPtr.Zero;
+                SetParent(emptyDevice, this.Handle);
+                MoveWindow(emptyDevice, i * DEVICE_WIDTH, DEVICE_MARGIN_TOP, DEVICE_WIDTH, DEVICE_HEIGHT, true);
+            }
+        }
+
+        private string RunCmd (String command, bool isGetOutput)
+        {
+            Process cmd = new Process();
+            cmd.StartInfo.FileName = "cmd.exe";
+            cmd.StartInfo.RedirectStandardInput = true;
+            cmd.StartInfo.RedirectStandardOutput = true;
+            cmd.StartInfo.CreateNoWindow = true;
+            cmd.StartInfo.UseShellExecute = false;
+            cmd.Start();
+            cmd.StandardInput.WriteLine(command);
+            cmd.StandardInput.Flush();
+            cmd.StandardInput.Close();
+            string output = "";
+            if (isGetOutput)
+            {
+                output = cmd.StandardOutput.ReadToEnd();
+            }
+            return output;
+        }
+
+        private void OpenDeviceScreen ()
+        {
+            string ouputRunCmdGetDeviceUids = this.RunCmd("adb devices", true);
+            string[] outputStrArr = Regex.Split(ouputRunCmdGetDeviceUids, "\r\n");
+            List<string> deviceUids = new List<string>();
+            bool startGetUId = false;
+            foreach (string output in outputStrArr)
+            {
+                if (startGetUId)
+                {
+                    string uid = output.Replace("\tdevice", "");
+                    if (uid == "")
+                    {
+                        break;
+                    }
+                    deviceUids.Add(uid);
+                    this.RunCmd("scrcpy -s" + uid, false);
+                    Thread.Sleep(1500);
+                    continue;
+                }
+                if (output == "List of devices attached")
+                {
+                    startGetUId = true;
+                }
+                
             }
         }
 
@@ -90,11 +176,11 @@ namespace DisplayDevices
             {
                 if (!String.IsNullOrEmpty(process.MainWindowTitle))
                 {
-                    Console.WriteLine("Process: {0} ID: {1} Window title: {2}", process.ProcessName, process.Id, process.MainWindowTitle);
                     if (process.ProcessName == "scrcpy")
                     {
                         IntPtr windowHandle = process.MainWindowHandle;
                         result.Add(windowHandle);
+                        processList.Add(process);
                         NumDevice++;
                     }
                 }
@@ -120,9 +206,22 @@ namespace DisplayDevices
             settingForm.Show();
         }
 
-        public void ShowLog()
+        private void RefreshToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Console.Write("Hello World");
+            deviceDisps = GetAllDeviceDisps();
+            this.DisplayDevices(DEFAULT_COLUMN);
+        }
+
+        private void SettingForm_FormClosing(object sender, FormClosedEventArgs e)
+        {
+            foreach (Process process in processList)
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill();
+                    process.Dispose();
+                }
+            }
         }
     }
 }

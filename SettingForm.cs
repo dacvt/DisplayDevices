@@ -36,7 +36,11 @@ namespace DisplayDevices
 
         private void ConfirmBtn_Click(object sender, EventArgs e)
         {
-            this.displayForm.ShowLog();
+            int numColumn = Convert.ToInt32(this.ColumnTbx.Text);
+            this.displayForm.DisplayDevices(numColumn);
+            this.Close();
+            this.panel.Hide();
+            this.panel.SendToBack();
         }
     }
 }

@@ -37,9 +37,10 @@
             // 
             // ConfirmBtn
             // 
-            this.ConfirmBtn.Location = new System.Drawing.Point(208, 136);
+            this.ConfirmBtn.Location = new System.Drawing.Point(312, 209);
+            this.ConfirmBtn.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.ConfirmBtn.Name = "ConfirmBtn";
-            this.ConfirmBtn.Size = new System.Drawing.Size(75, 23);
+            this.ConfirmBtn.Size = new System.Drawing.Size(112, 35);
             this.ConfirmBtn.TabIndex = 0;
             this.ConfirmBtn.Text = "OK";
             this.ConfirmBtn.UseVisualStyleBackColor = true;
@@ -48,28 +49,44 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(33, 14);
+            this.label1.Location = new System.Drawing.Point(50, 22);
+            this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(39, 13);
+            this.label1.Size = new System.Drawing.Size(58, 20);
             this.label1.TabIndex = 1;
             this.label1.Text = "Số Cột";
             // 
             // ColumnTbx
             // 
-            this.ColumnTbx.Location = new System.Drawing.Point(78, 12);
+            this.ColumnTbx.Location = new System.Drawing.Point(117, 18);
+            this.ColumnTbx.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.ColumnTbx.Maximum = new decimal(new int[] {
+            10,
+            0,
+            0,
+            0});
+            this.ColumnTbx.Minimum = new decimal(new int[] {
+            3,
+            0,
+            0,
+            0});
             this.ColumnTbx.Name = "ColumnTbx";
-            this.ColumnTbx.Size = new System.Drawing.Size(120, 20);
+            this.ColumnTbx.Size = new System.Drawing.Size(180, 26);
             this.ColumnTbx.TabIndex = 2;
+            this.ColumnTbx.Value = new decimal(new int[] {
+            3,
+            0,
+            0,
+            0});
             // 
             // SettingForm
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(284, 161);
+            this.ClientSize = new System.Drawing.Size(426, 248);
             this.Controls.Add(this.ColumnTbx);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.ConfirmBtn);
-            this.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.Name = "SettingForm";
             this.Text = "Setting";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.SettingForm_FormClosing);

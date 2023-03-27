@@ -37,7 +37,8 @@ namespace DisplayDevices
         private void ConfirmBtn_Click(object sender, EventArgs e)
         {
             int numColumn = Convert.ToInt32(this.ColumnTbx.Text);
-            this.displayForm.DisplayDevices(numColumn);
+            this.displayForm.NumDeviceColumn = numColumn;
+            this.displayForm.DisplayDevices();
             this.Close();
             this.panel.Hide();
             this.panel.SendToBack();

@@ -31,7 +31,7 @@ namespace DisplayDevices
 
         SettingForm settingForm;
         private GlassyPanel panel;
-        private List<Device> devices = new List<Device>();
+        private readonly List<Device> devices = new List<Device>();
 
         [DllImport("user32.dll", SetLastError = true)]
         static extern IntPtr GetForegroundWindow();
@@ -56,9 +56,20 @@ namespace DisplayDevices
 
         [DllImport("User32")]
         private static extern int ShowWindow(int hwnd, int nCmdShow);
+
         public DisplayForm()
         {
             InitializeComponent();
+            this.WindowState = FormWindowState.Maximized;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
+            this.MaximizeBox = false;
+            this.KillAllScrcpyProcess();
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            this.DisplayScreen();
+            this.InitDevices();
             panel = new GlassyPanel
             {
                 Width = this.Width,
@@ -68,12 +79,6 @@ namespace DisplayDevices
             this.Controls.Add(panel);
             panel.Hide();
             panel.SendToBack();
-        }
-
-        private void Form1_Load(object sender, EventArgs e)
-        {
-            this.DisplayScreen();
-            this.InitDevices();
         }
 
         public void DisplayDevices()
@@ -99,6 +104,10 @@ namespace DisplayDevices
             }
             if (numDevice != 0)
             {
+                if (2 < rowDisp)
+                {
+                    rowDisp = 2;
+                }
                 this.Size = new Size(columnDisp * DEVICE_WIDTH_FORM - paddingFromRight, rowDisp * DEVICE_HEIGHT_FORM + DEVICE_MARGIN_TOP);
             }
             int indexCol = 0;
@@ -150,6 +159,7 @@ namespace DisplayDevices
             if (numDevice != 0)
             {
                 this.Size = new Size(columnDisp * DEVICE_WIDTH_FORM - paddingFromRight, rowDisp * DEVICE_HEIGHT_FORM + DEVICE_MARGIN_TOP);
+                this.AutoScrollMinSize = new Size(0, rowDisp * DEVICE_HEIGHT_FORM + DEVICE_MARGIN_TOP);
             }
             int indexCol = 0;
             int indexRow = 0;
@@ -239,8 +249,11 @@ namespace DisplayDevices
             processStartInfo.RedirectStandardOutput = true;
             process.StartInfo = processStartInfo;
             process.Start();
+            ShowWindow(process.MainWindowHandle.ToInt32(), 0);
+            Thread.Sleep(500);
             Thread subThread = new Thread(() =>
             {
+                int timeSleep = 0;
                 while (true)
                 {
                     List<Process> processlist = new List<Process>(Process.GetProcessesByName("scrcpy"));
@@ -249,10 +262,19 @@ namespace DisplayDevices
                         break;
                     }
                     Thread.Sleep(10);
+                    timeSleep += 10;
+                    if (timeSleep == 3000)
+                    {
+                        break;
+                    }
                 }
-                this.AddDeviceScreen(col, row, process.MainWindowHandle);
+                IntPtr windowHandle = IntPtr.Zero;
+                if (timeSleep < 3000)
+                {
+                    windowHandle = process.MainWindowHandle;
+                }
+                this.AddDeviceScreen(col, row, windowHandle);
                 Device device = new Device();
-                IntPtr windowHandle = process.MainWindowHandle;
                 device.Serial = serial;
                 device.IntPtr = windowHandle;
                 device.Process = process;
@@ -261,34 +283,49 @@ namespace DisplayDevices
             subThread.Start();
         }
 
-        private void ReApplyOldDevice(string serial)
+        private void ReApplyOldDevice(string serial, int col, int row)
         {
-            this.RunCmd("scrcpy -s" + serial, false);
-            int numTry = 3;
-            while (0 < numTry)
+            Process process = new Process();
+            ProcessStartInfo processStartInfo = new ProcessStartInfo("scrcpy.exe");
+            string directoryName = Path.GetDirectoryName("scrcpy.exe");
+            processStartInfo.WorkingDirectory = directoryName;
+            processStartInfo.Arguments = "-s " + serial + " --window-title " + serial;
+            processStartInfo.CreateNoWindow = true;
+            processStartInfo.UseShellExecute = false;
+            processStartInfo.RedirectStandardError = false;
+            processStartInfo.RedirectStandardOutput = true;
+            process.StartInfo = processStartInfo;
+            process.Start();
+            Thread.Sleep(500);
+            Thread subThread = new Thread(() =>
             {
-                numTry--;
-                Thread.Sleep(1000);
-                Process[] processes = Process.GetProcessesByName("scrcpy");
-                int countDeviceNotExited = this.devices.FindAll(d => !d.Process.HasExited).Count;
-                if (processes.Length - countDeviceNotExited == 1)
+                int timeSleep = 0;
+                while (true)
                 {
-                    Device deviceExited = devices.Find(d => d.Process.HasExited);
-                    foreach (Process process in processes)
+                    List<Process> processlist = new List<Process>(Process.GetProcessesByName("scrcpy"));
+                    if (processlist.Find(p => p.MainWindowTitle == serial) != null)
                     {
-                        Device deviceExist = devices.Find(d => !d.Process.HasExited && d.Process.Id != process.Id);
-                        if (deviceExist == null)
-                        {
-                            deviceExited.Process = process;
-                            IntPtr windowHandle = process.MainWindowHandle;
-                            deviceExited.IntPtr = windowHandle;
-                            break;
-                        }
+                        break;
                     }
-                    break;
+                    Thread.Sleep(10);
+                    timeSleep += 10;
+                    if (timeSleep == 3000)
+                    {
+                        break;
+                    }
                 }
-            }
-            this.DisplayDevices();
+                if (timeSleep < 3000)
+                {
+                    Device deviceExist = this.devices.Find(d => d.Serial == serial);
+                    if (deviceExist != null)
+                    {
+                        deviceExist.Process = process;
+                        deviceExist.IntPtr = process.MainWindowHandle;
+                    }
+                    this.AddDeviceScreen(col, row, process.MainWindowHandle);
+                }
+            });
+            subThread.Start();
         }
 
         // Get devices serial from adb devices command and display
@@ -333,32 +370,34 @@ namespace DisplayDevices
             this.ReloadScreen();
         }
 
-        // Get all device process and display
-        private void RefreshScreen(string serial)
-        {
-            DisplayDevices();
-        }
-
         private void ReloadScreen()
         {
             List<string> deviceSerials = this.GetDeviceSerials();
-            foreach(string serial in deviceSerials)
+            // Get all exist old devices
+            List<Device> oldDevices = this.devices.FindAll(d => deviceSerials.Exists(serial => d.Serial == serial));
+            foreach (Device oldDevice in oldDevices)
             {
-                Device existDevice = devices.Find(d => d.Serial == serial);
-                if (existDevice != null && !existDevice.Process.HasExited)
+                int index = this.devices.FindIndex(d => d.Serial == oldDevice.Serial);
+                // old device but not initialize IntPtr
+                int col = index % this.NumDeviceColumn;
+                int row = index / this.NumDeviceColumn;
+                if (oldDevice.IntPtr.Equals(IntPtr.Zero))
                 {
-                    continue;
+                    this.ApplyNewDevice(oldDevice.Serial, col, row);
+                } else if (oldDevice.Process.HasExited)
+                {
+                    this.ReApplyOldDevice(oldDevice.Serial, col, row);
                 }
-                if (existDevice == null)
+            }
+            List<string> newDeviceSerials = deviceSerials.FindAll(serial => oldDevices.Exists(d => d.Serial != serial));
+            foreach (string serial in newDeviceSerials)
+            {
+                int index = this.devices.FindIndex(d => d.Serial == serial);
+                if (index == -1)
                 {
                     int col = this.devices.Count % NumDeviceColumn;
                     int row = this.devices.Count / NumDeviceColumn;
                     this.ApplyNewDevice(serial, col, row);
-                    continue;
-                }
-                if (existDevice.Process.HasExited)
-                {
-                    this.ReApplyOldDevice(existDevice.Serial);
                     continue;
                 }
             }
@@ -370,6 +409,19 @@ namespace DisplayDevices
             foreach (Device device in this.devices)
             {
                 Process process = device.Process;
+                if (!process.HasExited)
+                {
+                    process.Kill();
+                    process.Dispose();
+                }
+            }
+        }
+
+        private void KillAllScrcpyProcess()
+        {
+            List<Process> processlist = new List<Process>(Process.GetProcessesByName("scrcpy"));
+            foreach (Process process in processlist)
+            {
                 if (!process.HasExited)
                 {
                     process.Kill();

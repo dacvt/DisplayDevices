@@ -25,7 +25,7 @@ namespace DisplayDevices
 
         private void SettingForm_Load(object sender, EventArgs e)
         {
-            
+            this.ColumnTbx.Value = this.displayForm.NumDeviceColumn;
         }
 
         private void SettingForm_FormClosing(object sender, FormClosingEventArgs e)

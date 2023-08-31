@@ -14,9 +14,18 @@ namespace DisplayDevices
         [STAThread]
         static void Main()
         {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new DisplayForm());
+            string[] args = Environment.GetCommandLineArgs();
+            if (args.Length == 0)
+            {
+                Console.WriteLine("Can not pass 0 arguments");
+            }
+            else
+            {
+                int numDeviceColumn = Int32.Parse("3");
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                Application.Run(new DisplayForm(numDeviceColumn));
+            }
         }
     }
 }

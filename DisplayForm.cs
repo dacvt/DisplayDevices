@@ -22,7 +22,8 @@ namespace DisplayDevices
         private const int PADDING_FROM_RIGHT = 5; // padding increase if has more device
         private const int DEFAULT_COLUMN = 3;
 
-        private  int numDeviceColumn = DEFAULT_COLUMN;
+        private int numDeviceColumn = DEFAULT_COLUMN;
+
         public int NumDeviceColumn
         {
             get { return numDeviceColumn; }
@@ -57,9 +58,14 @@ namespace DisplayDevices
         [DllImport("User32")]
         private static extern int ShowWindow(int hwnd, int nCmdShow);
 
-        public DisplayForm()
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool AllocConsole();
+
+        public DisplayForm(int numDeviceColumn)
         {
             InitializeComponent();
+            this.numDeviceColumn = numDeviceColumn;
             this.WindowState = FormWindowState.Maximized;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
             this.MaximizeBox = false;
@@ -68,6 +74,7 @@ namespace DisplayDevices
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            AllocConsole();
             this.DisplayScreen();
             this.InitDevices();
             panel = new GlassyPanel

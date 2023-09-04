@@ -61,14 +61,12 @@
             this.settingsToolStripMenuItem.Name = "settingsToolStripMenuItem";
             this.settingsToolStripMenuItem.Size = new System.Drawing.Size(178, 34);
             this.settingsToolStripMenuItem.Text = "Settings";
-            this.settingsToolStripMenuItem.Click += new System.EventHandler(this.SettingsToolStripMenuItem_Click);
             // 
             // RefreshToolStripMenuItem
             // 
             this.RefreshToolStripMenuItem.Name = "RefreshToolStripMenuItem";
             this.RefreshToolStripMenuItem.Size = new System.Drawing.Size(178, 34);
             this.RefreshToolStripMenuItem.Text = "Refresh";
-            this.RefreshToolStripMenuItem.Click += new System.EventHandler(this.RefreshToolStripMenuItem_Click);
             // 
             // hScrollBar1
             // 

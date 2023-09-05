@@ -15,24 +15,17 @@ namespace DisplayDevices
 {
     public partial class DisplayForm : Form
     {
-        private const int DEVICE_WIDTH = 331;
+        private const int DEVICE_WIDTH = 370;
         private const int DEVICE_HEIGHT = 600;
         private const int DEVICE_MARGIN_TOP = 25;
         private const int DEVICE_WIDTH_FORM = 345;
         private const int DEVICE_HEIGHT_FORM = 637;
         private const int PADDING_FROM_RIGHT = 5; // padding increase if has more device
         private const int DEFAULT_COLUMN = 3;
-
-        private int numDeviceColumn = DEFAULT_COLUMN;
-
         private ManagementEventWatcher processStartEvent = new ManagementEventWatcher("SELECT * FROM Win32_ProcessStartTrace");
         private ManagementEventWatcher processStopEvent = new ManagementEventWatcher("SELECT * FROM Win32_ProcessStopTrace");
 
-        public int NumDeviceColumn
-        {
-            get { return numDeviceColumn; }
-            set { this.numDeviceColumn = value; }
-        }
+        public int NumDeviceColumn { get; set; } = DEFAULT_COLUMN;
 
         private GlassyPanel panel;
         private readonly List<Device> devices = new List<Device>();
@@ -68,7 +61,7 @@ namespace DisplayDevices
         public DisplayForm(int numDeviceColumn)
         {
             InitializeComponent();
-            this.numDeviceColumn = numDeviceColumn;
+            this.NumDeviceColumn = numDeviceColumn;
             this.WindowState = FormWindowState.Maximized;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
             this.MaximizeBox = false;
@@ -89,13 +82,22 @@ namespace DisplayDevices
             string processName = e.NewEvent.Properties["ProcessName"].Value.ToString();
             if (processName == "MEmu.exe")
             {
+                string deviceName = "";
                 int processID = Convert.ToInt32(e.NewEvent.Properties["ProcessID"].Value);
-                Process memuProcess = Process.GetProcessById(processID);
-                string deviceName = memuProcess.MainWindowTitle.Replace(")", "").Replace("(", "");
-                Console.WriteLine("Device Start. Name: " + deviceName + " | ID: " + processID);
+                while (true)
+                {
+                    Process memuProcess = Process.GetProcessById(processID);
+                    deviceName = memuProcess.MainWindowTitle.Replace(")", "").Replace("(", "");
+                    Console.WriteLine("Device Start. Name: " + deviceName + " | ID: " + processID);
+                    if (deviceName == "")
+                    {
+                        Thread.Sleep(1000);
+                        continue;
+                    }
+                    break;
+                }
                 string[] names = deviceName.Split('_');
-                int threadNth = Int32.Parse(names[1]);
-                int deviceNum = Int32.Parse(names[2]) - 1;
+                int deviceNum = Int32.Parse(names[1]) - 1;
                 int col = deviceNum % NumDeviceColumn;
                 int row = deviceNum / NumDeviceColumn;
                 this.ApplyNewDevice(processID, col, row);
@@ -189,6 +191,12 @@ namespace DisplayDevices
             Process process = Process.GetProcessById(processId);
             IntPtr windowHandle = process.MainWindowHandle;
             this.AddDeviceScreen(col, row, process.MainWindowHandle);
+            Device device = new Device
+            {
+                IntPtr = windowHandle,
+                Process = process
+            };
+            this.devices.Add(device);
         }
 
         private void SettingForm_FormClosing(object sender, FormClosedEventArgs e)

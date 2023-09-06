@@ -54,6 +54,9 @@ namespace DisplayDevices
         [DllImport("User32")]
         private static extern int ShowWindow(int hwnd, int nCmdShow);
 
+        [DllImport("user32.dll")]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         static extern bool AllocConsole();
@@ -84,9 +87,11 @@ namespace DisplayDevices
             {
                 int processID = Convert.ToInt32(e.NewEvent.Properties["ProcessID"].Value);
                 string deviceName;
+                Process memuProcess;
                 while (true)
                 {
-                    Process memuProcess = Process.GetProcessById(processID);
+                    memuProcess = Process.GetProcessById(processID);
+                    // ShowWindow(memuProcess.MainWindowHandle.ToInt32(), 0);
                     deviceName = memuProcess.MainWindowTitle.Replace(")", "").Replace("(", "");
                     Console.WriteLine("Device Start. Name: " + deviceName + " | ID: " + processID);
                     if (deviceName == "")
@@ -97,10 +102,32 @@ namespace DisplayDevices
                     break;
                 }
                 string[] names = deviceName.Split('_');
+                string name = names[0];
                 int deviceNum = Int32.Parse(names[1]) - 1;
                 int col = deviceNum % NumDeviceColumn;
                 int row = deviceNum / NumDeviceColumn;
-                this.ApplyNewDevice(processID, col, row);
+                while (true)
+                {
+                    Thread.Sleep(3000);
+                    string[] deviceInfo = this.GetVirtualDeviceInfo(deviceName);
+                    if (deviceInfo == null)
+                    {
+                        continue;
+                    }
+                    if (this.IsDeviceStarted(deviceInfo[0]))
+                    {
+                        break;
+                    }
+                }
+                this.ApplyNewDevice(Convert.ToInt32(processID), col, row);
+                //string newProcessId = this.GetVirtualDevicePid(deviceName);
+                //Console.WriteLine(newProcessId);
+                //if (newProcessId != null)
+                //{
+                //    Console.WriteLine("ApplyNewDevice: " + newProcessId);
+                //    ShowWindow(memuProcess.MainWindowHandle.ToInt32(), 0);
+                //    this.ApplyNewDevice(Convert.ToInt32(newProcessId), col, row);
+                //}
             }
         }
         private void ProcessStopEvent_EventArrived(object sender, EventArrivedEventArgs e)
@@ -111,6 +138,31 @@ namespace DisplayDevices
             {
                 Console.WriteLine("Process stopped. Name: " + processName + " | ID: " + processID);
             }
+        }
+
+        private bool IsDeviceStarted(string vmindex)
+        {
+            string output = this.RunCmd(String.Format("memuc -i {0} execcmd \"getprop sys.boot_completed\"", vmindex), true);
+            return output.Contains("\n1");
+        }
+
+        private string[] GetVirtualDeviceInfo(string deviceName)
+        {
+            string output = this.RunCmd("memuc listvms", true);
+            string[] outputStrArr = output.Split('\n');
+            for (int i = 0; i < outputStrArr.Length; i++)
+            {
+                string[] deviceInfo = outputStrArr[i].Split(',');
+                if (deviceInfo.Length != 5)
+                {
+                    continue;
+                }
+                if (deviceInfo[1] == deviceName)
+                {
+                    return deviceInfo;
+                }
+            }
+            return null;
         }
 
         private void Form1_Load(object sender, EventArgs e)

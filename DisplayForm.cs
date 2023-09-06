@@ -82,8 +82,8 @@ namespace DisplayDevices
             string processName = e.NewEvent.Properties["ProcessName"].Value.ToString();
             if (processName == "MEmu.exe")
             {
-                string deviceName = "";
                 int processID = Convert.ToInt32(e.NewEvent.Properties["ProcessID"].Value);
+                string deviceName;
                 while (true)
                 {
                     Process memuProcess = Process.GetProcessById(processID);

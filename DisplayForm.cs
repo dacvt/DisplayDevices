@@ -122,6 +122,7 @@ namespace DisplayDevices
                         }
                         break;
                     }
+                    Thread.Sleep(1000);
                     string[] names = deviceName.Split('_');
                     string name = names[0];
                     int deviceNum = Int32.Parse(names[1]) - 1;
@@ -130,14 +131,15 @@ namespace DisplayDevices
                     this.ApplyNewDevice(memuProcess, col, row);
                     while (true)
                     {
-                        Thread.Sleep(3000);
                         string[] deviceInfo = this.GetVirtualDeviceInfo(deviceName);
                         if (deviceInfo == null)
                         {
+                            Thread.Sleep(3000);
                             continue;
                         }
                         if (this.IsDeviceStarted(deviceInfo[0]))
                         {
+                            Thread.Sleep(1500);
                             break;
                         }
                     }
@@ -289,6 +291,10 @@ namespace DisplayDevices
                         break;
                     }
                     string[] names = deviceName.Split('_');
+                    if (names.Length < 2)
+                    {
+                        return;
+                    }
                     string name = names[0];
                     int deviceNum = Int32.Parse(names[1]) - 1;
                     int col = deviceNum % NumDeviceColumn;

@@ -21,7 +21,14 @@ namespace DisplayDevices
             }
             else
             {
-                int numDeviceColumn = Int32.Parse("3");
+                int numDeviceColumn = 3;
+                try
+                {
+                    numDeviceColumn = Int32.Parse(args[1]);
+                } catch (Exception)
+                {
+                    Console.WriteLine("Not found num device argument.");
+                }
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 Application.Run(new DisplayForm(numDeviceColumn));

@@ -1,19 +1,18 @@
 ﻿using System;
-using System.Management;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Text;
-using System.Runtime.InteropServices;
-using System.Windows.Forms;
 using System.Diagnostics;
+using System.Linq;
+using System.Management;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.RegularExpressions;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace DisplayDevices
 {
-    public partial class DisplayForm : Form
+    internal class ArrangeDevice
     {
         private const int DEVICE_WIDTH = 370;
         private const int DEVICE_HEIGHT = 600;
@@ -49,9 +48,6 @@ namespace DisplayDevices
         [DllImport("gdi32.dll")]
         static extern int GetDeviceCaps(IntPtr hdc, int nIndex);
 
-        [DllImport("user32.dll")]
-        static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
-
         [DllImport("User32")]
         private static extern int ShowWindow(int hwnd, int nCmdShow);
 
@@ -62,32 +58,12 @@ namespace DisplayDevices
         //[return: MarshalAs(UnmanagedType.Bool)]
         //static extern bool AllocConsole();
 
-        public DisplayForm(int numDeviceColumn)
+        public ArrangeDevice(int numDeviceColumn)
         {
-            InitializeComponent();
             this.NumDeviceColumn = numDeviceColumn;
-            this.WindowState = FormWindowState.Maximized;
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-            this.MaximizeBox = false;
             this.KillAllProcess();
             InitDevices();
             Initialize();
-        }
-
-        protected override void WndProc(ref Message message)
-        {
-            const int WM_SYSCOMMAND = 0x0112;
-            const int SC_MOVE = 0xF010;
-
-            switch (message.Msg)
-            {
-                case WM_SYSCOMMAND:
-                    int command = message.WParam.ToInt32() & 0xfff0;
-                    if (command == SC_MOVE)
-                        return;
-                    break;
-            }
-            base.WndProc(ref message);
         }
 
         private void Initialize()
@@ -147,7 +123,7 @@ namespace DisplayDevices
                             break;
                         }
                     }
-                    SetWindowPos(memuProcess.MainWindowHandle, this.Handle, col * DEVICE_WIDTH, row * DEVICE_HEIGHT + DEVICE_MARGIN_TOP, DEVICE_WIDTH, DEVICE_HEIGHT, 0x0001);
+                    SetWindowPos(memuProcess.MainWindowHandle, IntPtr.Zero, col * DEVICE_WIDTH, row * DEVICE_HEIGHT + DEVICE_MARGIN_TOP, DEVICE_WIDTH, DEVICE_HEIGHT, 0x0001);
                     this.AddDeviceScreen(col, row, memuProcess.MainWindowHandle);
                 });
                 subThread.Start();
@@ -198,20 +174,6 @@ namespace DisplayDevices
             return null;
         }
 
-        private void Form1_Load(object sender, EventArgs e)
-        {
-            //AllocConsole();
-            panel = new GlassyPanel
-            {
-                Width = this.Width,
-                Height = this.Height,
-                Dock = DockStyle.Fill
-            };
-            this.Controls.Add(panel);
-            panel.Hide();
-            panel.SendToBack();
-        }
-
         private string RunCmd(String command, bool isGetOutput)
         {
             Process cmd = new Process();
@@ -260,7 +222,6 @@ namespace DisplayDevices
 
         public void AddDeviceScreen(int col, int row, IntPtr deviceDisp)
         {
-            SetParent(deviceDisp, this.Handle);
             MoveWindow(deviceDisp, col * DEVICE_WIDTH, row * DEVICE_HEIGHT + DEVICE_MARGIN_TOP, DEVICE_WIDTH, DEVICE_HEIGHT, false);
         }
 
@@ -317,7 +278,7 @@ namespace DisplayDevices
                             break;
                         }
                     }
-                    SetWindowPos(memuProcess.MainWindowHandle, this.Handle, col * DEVICE_WIDTH, row * DEVICE_HEIGHT + DEVICE_MARGIN_TOP, DEVICE_WIDTH, DEVICE_HEIGHT, 0x0001);
+                    SetWindowPos(memuProcess.MainWindowHandle, IntPtr.Zero, col * DEVICE_WIDTH, row * DEVICE_HEIGHT + DEVICE_MARGIN_TOP, DEVICE_WIDTH, DEVICE_HEIGHT, 0x0001);
                     this.AddDeviceScreen(col, row, memuProcess.MainWindowHandle);
                 });
                 subThread.Start();

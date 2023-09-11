@@ -143,7 +143,7 @@ namespace DisplayDevices
                         }
                         if (this.IsDeviceStarted(deviceInfo[0]))
                         {
-                            Thread.Sleep(1500);
+                            Thread.Sleep(3000);
                             break;
                         }
                     }
@@ -151,15 +151,15 @@ namespace DisplayDevices
                     this.AddDeviceScreen(col, row, memuProcess.MainWindowHandle);
                 });
                 subThread.Start();
-                if (processID != 0)
-                {
-                    MyThread myThread = new MyThread
-                    {
-                        ProcessId = processID,
-                        SubThread = subThread
-                    };
-                    this.myThreads.Add(myThread);
-                }
+                //if (processID != 0)
+                //{
+                //    MyThread myThread = new MyThread
+                //    {
+                //        ProcessId = processID,
+                //        SubThread = subThread
+                //    };
+                //    this.myThreads.Add(myThread);
+                //}
             }
         }
         private void ProcessStopEvent_EventArrived(object sender, EventArrivedEventArgs e)
@@ -169,8 +169,8 @@ namespace DisplayDevices
             {
                 string processID = Convert.ToInt32(e.NewEvent.Properties["ProcessID"].Value).ToString();
                 Console.WriteLine("Process stopped. Name: " + processName + " | ID: " + processID);
-                MyThread myThread = this.myThreads.Find(thread => thread.ProcessId == Int32.Parse(processID));
-                myThread.SubThread.Abort();
+                //MyThread myThread = this.myThreads.Find(thread => thread.ProcessId == Int32.Parse(processID));
+                //myThread.SubThread.Abort();
             }
         }
         private bool IsDeviceStarted(string vmindex)
@@ -262,6 +262,7 @@ namespace DisplayDevices
         {
             SetParent(deviceDisp, this.Handle);
             MoveWindow(deviceDisp, col * DEVICE_WIDTH, row * DEVICE_HEIGHT + DEVICE_MARGIN_TOP, DEVICE_WIDTH, DEVICE_HEIGHT, false);
+            // SetWindowPos(deviceDisp, this.Handle, col * DEVICE_WIDTH, row * DEVICE_HEIGHT + DEVICE_MARGIN_TOP, DEVICE_WIDTH, DEVICE_HEIGHT, 0x0001);
         }
 
         private void ApplyNewDevice(Process process, int col, int row)
@@ -321,12 +322,12 @@ namespace DisplayDevices
                     this.AddDeviceScreen(col, row, memuProcess.MainWindowHandle);
                 });
                 subThread.Start();
-                MyThread myThread = new MyThread
-                {
-                    ProcessId = memuProcess.Id,
-                    SubThread = subThread
-                };
-                this.myThreads.Add(myThread);
+                //MyThread myThread = new MyThread
+                //{
+                //    ProcessId = memuProcess.Id,
+                //    SubThread = subThread
+                //};
+                //this.myThreads.Add(myThread);
             }
         }
 
@@ -392,6 +393,11 @@ namespace DisplayDevices
                 get { return this.subThread; }
                 set { this.subThread = value; }
             }
+        }
+
+        private void DisplayForm_Shown(object sender, EventArgs e)
+        {
+            // this.Hide();
         }
     }
 }

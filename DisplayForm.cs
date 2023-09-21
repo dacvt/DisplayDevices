@@ -70,7 +70,7 @@ namespace DisplayDevices
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.KillAllProcess();
-            InitDevices();
+            // InitDevices();
             Initialize();
         }
 
@@ -403,6 +403,7 @@ namespace DisplayDevices
         private void DisplayForm_Shown(object sender, EventArgs e)
         {
             // this.Hide();
+            InitDevices();
         }
     }
 }

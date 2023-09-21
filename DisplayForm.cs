@@ -149,6 +149,7 @@ namespace DisplayDevices
                     }
                     SetWindowPos(memuProcess.MainWindowHandle, this.Handle, col * DEVICE_WIDTH, row * DEVICE_HEIGHT + DEVICE_MARGIN_TOP, DEVICE_WIDTH, DEVICE_HEIGHT, 0x0001);
                     this.AddDeviceScreen(col, row, memuProcess.MainWindowHandle);
+                    this.AutoScrollMinSize = new Size(0, row * DEVICE_HEIGHT_FORM + DEVICE_MARGIN_TOP);
                 });
                 subThread.Start();
                 //if (processID != 0)
@@ -328,6 +329,10 @@ namespace DisplayDevices
                 //    SubThread = subThread
                 //};
                 //this.myThreads.Add(myThread);
+            }
+            if (processlist.Count != 0)
+            {
+                this.AutoScrollMinSize = new Size(0, processlist.Count / NumDeviceColumn * DEVICE_HEIGHT_FORM + DEVICE_MARGIN_TOP);
             }
         }
 

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Timers;
+using System.Management;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Text;
@@ -22,7 +24,9 @@ namespace DisplayDevices
         private const int PADDING_FROM_RIGHT = 5; // padding increase if has more device
         private const int DEFAULT_COLUMN = 3;
 
-        private  int numDeviceColumn = DEFAULT_COLUMN;
+        private int numDeviceColumn = DEFAULT_COLUMN;
+        private static System.Timers.Timer aTimer;
+
         public int NumDeviceColumn
         {
             get { return numDeviceColumn; }
@@ -57,6 +61,9 @@ namespace DisplayDevices
         [DllImport("User32")]
         private static extern int ShowWindow(int hwnd, int nCmdShow);
 
+        //private ManagementEventWatcher processStartEvent = new ManagementEventWatcher("SELECT * FROM Win32_ProcessStartTrace");
+        //private ManagementEventWatcher processStopEvent = new ManagementEventWatcher("SELECT * FROM Win32_ProcessStopTrace");
+
         public DisplayForm()
         {
             InitializeComponent();
@@ -64,6 +71,11 @@ namespace DisplayDevices
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
             this.MaximizeBox = false;
             this.KillAllScrcpyProcess();
+            aTimer = new System.Timers.Timer();
+            aTimer.Interval = 2000;
+            aTimer.Elapsed += OnTimedEvent;
+            aTimer.AutoReset = true;
+            aTimer.Enabled = true;
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -80,6 +92,37 @@ namespace DisplayDevices
             panel.Hide();
             panel.SendToBack();
         }
+
+        //private void Initialize()
+        //{
+        //    processStartEvent.EventArrived += new EventArrivedEventHandler(ProcessStartEvent_EventArrived);
+        //    processStartEvent.Start();
+        //    processStopEvent.EventArrived += new EventArrivedEventHandler(ProcessStopEvent_EventArrived);
+        //    processStopEvent.Start();
+        //}
+
+        //private void ProcessStartEvent_EventArrived(object sender, EventArrivedEventArgs e)
+        //{
+        //    string processName = e.NewEvent.Properties["ProcessName"].Value.ToString();
+        //    if (processName == "scrcpy.exe")
+        //    {
+        //        int processID = Convert.ToInt32(e.NewEvent.Properties["ProcessID"].Value);
+        //        Process scrcpyProcess = Process.GetProcessById(processID);
+        //        List<string> deviceSerials = this.GetDeviceSerials();
+        //        // Get all exist old devices
+        //        List<Device> oldDevices = this.devices.FindAll(d => deviceSerials.Exists(serial => d.Serial == serial));
+        //        string newSerialDevice = deviceSerials.Find(serial => oldDevices.Exists(d => d.Serial != serial));
+        //    }
+        //}
+        //private void ProcessStopEvent_EventArrived(object sender, EventArrivedEventArgs e)
+        //{
+        //    string processName = e.NewEvent.Properties["ProcessName"].Value.ToString();
+        //    if (processName == "scrcpy.exe")
+        //    {
+        //        string processID = Convert.ToInt32(e.NewEvent.Properties["ProcessID"].Value).ToString();
+        //        Console.WriteLine("Process stopped. Name: " + processName + " | ID: " + processID);
+        //    }
+        //}
 
         public void DisplayDevices()
         {
@@ -401,7 +444,6 @@ namespace DisplayDevices
                     continue;
                 }
             }
-            
         }
 
         private void SettingForm_FormClosing(object sender, FormClosedEventArgs e)
@@ -451,6 +493,16 @@ namespace DisplayDevices
                 get { return this.intPtr; }
                 set { this.intPtr = value; }
             }
+        }
+
+        //private void Form1_Show(object sender, EventArgs e)
+        //{
+        //    Initialize();
+        //}
+
+        private void OnTimedEvent(Object source, System.Timers.ElapsedEventArgs e)
+        {
+            this.ReloadScreen();
         }
     }
 }

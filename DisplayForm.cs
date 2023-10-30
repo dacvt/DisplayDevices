@@ -62,6 +62,10 @@ namespace DisplayDevices
         [DllImport("User32")]
         private static extern int ShowWindow(int hwnd, int nCmdShow);
 
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool AllocConsole();
+
         private ManagementEventWatcher processStartEvent = new ManagementEventWatcher("SELECT * FROM Win32_ProcessStartTrace");
         private ManagementEventWatcher processStopEvent = new ManagementEventWatcher("SELECT * FROM Win32_ProcessStopTrace");
 
@@ -92,6 +96,7 @@ namespace DisplayDevices
             this.Controls.Add(panel);
             panel.Hide();
             panel.SendToBack();
+            AllocConsole();
         }
 
         private void Initialize()
@@ -114,7 +119,7 @@ namespace DisplayDevices
                 //List<Device> oldDevices = this.devices.FindAll(d => deviceSerials.Exists(serial => d.Serial == serial));
                 //string newSerialDevice = deviceSerials.Find(serial => oldDevices.Exists(d => d.Serial != serial));
                 string processID = Convert.ToInt32(e.NewEvent.Properties["ProcessID"].Value).ToString();
-                Console.WriteLine("Process stopped. Name: " + processName + " | ID: " + processID);
+                Console.WriteLine("Process started. Name: " + processName + " | ID: " + processID);
             }
         }
         private void ProcessStopEvent_EventArrived(object sender, EventArrivedEventArgs e)
@@ -413,7 +418,7 @@ namespace DisplayDevices
 
         private void RefreshToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            // this.ReloadScreen();
+            this.ReloadScreen();
         }
 
         private void ReloadScreen()
@@ -430,7 +435,8 @@ namespace DisplayDevices
                 if (oldDevice.IntPtr.Equals(IntPtr.Zero))
                 {
                     this.ApplyNewDevice(oldDevice.Serial, col, row);
-                } else if (oldDevice.Process.HasExited)
+                }
+                else // if (oldDevice.Process.HasExited)
                 {
                     this.ReApplyOldDevice(oldDevice.Serial, col, row);
                 }
@@ -498,17 +504,27 @@ namespace DisplayDevices
             }
         }
 
-        //private void Form1_Show(object sender, EventArgs e)
-        //{
-        //    Initialize();
-        //}
+        private void Form1_Show(object sender, EventArgs e)
+        {
+            Initialize();
+        }
 
         private void OnTimedEvent(Object source, System.Timers.ElapsedEventArgs e)
         {
             // this.ReloadScreen();
+            if (this.deviceSerials.Count != this.devices.Count)
+            {
+                return;
+            }
             List<String> deviceSerials = this.GetDeviceSerials();
             // for new devices
-            List<String> newSerials = deviceSerials.FindAll(s => !this.deviceSerials.Exists(serial => s == serial));
+            List<String> newSerials = deviceSerials.FindAll(s => !this.deviceSerials.Exists(serial => String.Equals(s, serial)));
+            if (0 < newSerials.Count)
+            {
+                Console.WriteLine("device1: " + deviceSerials[0]);
+                Console.WriteLine("device2: " + newSerials[0]);
+                Console.WriteLine("device" + String.Equals(deviceSerials[0], newSerials[0]));
+            }
             this.deviceSerials = deviceSerials;
             if (0 < newSerials.Count)
             {
@@ -521,20 +537,24 @@ namespace DisplayDevices
                         index = this.devices.Count + i;
                         int col = index % this.NumDeviceColumn;
                         int row = index / this.NumDeviceColumn;
+                        Console.WriteLine("ApplyNewDevice!");
                         this.ApplyNewDevice(newSerials[i], col, row);
                     }
                     else
                     {
-                        Device oldDevice = this.devices[i];
+                        Device oldDevice = this.devices[index];
                         // old device but not initialize IntPtr
                         int col = index % this.NumDeviceColumn;
                         int row = index / this.NumDeviceColumn;
+                        Console.WriteLine(oldDevice.Serial);
                         if (oldDevice.IntPtr.Equals(IntPtr.Zero))
                         {
+                            Console.WriteLine("ApplyNewDevice!");
                             this.ApplyNewDevice(oldDevice.Serial, col, row);
                         }
-                        else if (oldDevice.Process.HasExited)
+                        else // if (oldDevice.Process.HasExited)
                         {
+                            Console.WriteLine("ReApplyOldDevice!");
                             this.ReApplyOldDevice(oldDevice.Serial, col, row);
                         }
                     }
@@ -549,17 +569,18 @@ namespace DisplayDevices
                     // old device but not initialize IntPtr
                     int col = index % this.NumDeviceColumn;
                     int row = index / this.NumDeviceColumn;
-                    //if (oldDevice.IntPtr.Equals(IntPtr.Zero))
-                    //{
-                    //    this.ApplyNewDevice(oldDevice.Serial, col, row);
-                    //} else
-                    if (oldDevice.Process.HasExited)
+                    if (oldDevice.IntPtr.Equals(IntPtr.Zero))
                     {
+                        Console.WriteLine("ApplyNewDevice!");
+                        this.ApplyNewDevice(oldDevice.Serial, col, row);
+                    } else if (oldDevice.Process.HasExited)
+                    {
+                        Console.WriteLine("ReApplyOldDevice!");
                         this.ReApplyOldDevice(oldDevice.Serial, col, row);
                     }
                 }
             }
-            int numDevice = deviceSerials.Count;
+            int numDevice = this.devices.Count;
             int columnDisp = this.numDeviceColumn;
             if (columnDisp < DEFAULT_COLUMN || numDevice < DEFAULT_COLUMN)
             {

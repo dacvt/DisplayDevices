@@ -36,6 +36,7 @@ namespace DisplayDevices
         SettingForm settingForm;
         private GlassyPanel panel;
         private readonly List<Device> devices = new List<Device>();
+        private List<String> deviceSerials = new List<string>();
 
         [DllImport("user32.dll", SetLastError = true)]
         static extern IntPtr GetForegroundWindow();
@@ -61,8 +62,8 @@ namespace DisplayDevices
         [DllImport("User32")]
         private static extern int ShowWindow(int hwnd, int nCmdShow);
 
-        //private ManagementEventWatcher processStartEvent = new ManagementEventWatcher("SELECT * FROM Win32_ProcessStartTrace");
-        //private ManagementEventWatcher processStopEvent = new ManagementEventWatcher("SELECT * FROM Win32_ProcessStopTrace");
+        private ManagementEventWatcher processStartEvent = new ManagementEventWatcher("SELECT * FROM Win32_ProcessStartTrace");
+        private ManagementEventWatcher processStopEvent = new ManagementEventWatcher("SELECT * FROM Win32_ProcessStopTrace");
 
         public DisplayForm()
         {
@@ -72,7 +73,7 @@ namespace DisplayDevices
             this.MaximizeBox = false;
             this.KillAllScrcpyProcess();
             aTimer = new System.Timers.Timer();
-            aTimer.Interval = 2000;
+            aTimer.Interval = 3000;
             aTimer.Elapsed += OnTimedEvent;
             aTimer.AutoReset = true;
             aTimer.Enabled = true;
@@ -93,36 +94,38 @@ namespace DisplayDevices
             panel.SendToBack();
         }
 
-        //private void Initialize()
-        //{
-        //    processStartEvent.EventArrived += new EventArrivedEventHandler(ProcessStartEvent_EventArrived);
-        //    processStartEvent.Start();
-        //    processStopEvent.EventArrived += new EventArrivedEventHandler(ProcessStopEvent_EventArrived);
-        //    processStopEvent.Start();
-        //}
+        private void Initialize()
+        {
+            processStartEvent.EventArrived += new EventArrivedEventHandler(ProcessStartEvent_EventArrived);
+            processStartEvent.Start();
+            processStopEvent.EventArrived += new EventArrivedEventHandler(ProcessStopEvent_EventArrived);
+            processStopEvent.Start();
+        }
 
-        //private void ProcessStartEvent_EventArrived(object sender, EventArrivedEventArgs e)
-        //{
-        //    string processName = e.NewEvent.Properties["ProcessName"].Value.ToString();
-        //    if (processName == "scrcpy.exe")
-        //    {
-        //        int processID = Convert.ToInt32(e.NewEvent.Properties["ProcessID"].Value);
-        //        Process scrcpyProcess = Process.GetProcessById(processID);
-        //        List<string> deviceSerials = this.GetDeviceSerials();
-        //        // Get all exist old devices
-        //        List<Device> oldDevices = this.devices.FindAll(d => deviceSerials.Exists(serial => d.Serial == serial));
-        //        string newSerialDevice = deviceSerials.Find(serial => oldDevices.Exists(d => d.Serial != serial));
-        //    }
-        //}
-        //private void ProcessStopEvent_EventArrived(object sender, EventArrivedEventArgs e)
-        //{
-        //    string processName = e.NewEvent.Properties["ProcessName"].Value.ToString();
-        //    if (processName == "scrcpy.exe")
-        //    {
-        //        string processID = Convert.ToInt32(e.NewEvent.Properties["ProcessID"].Value).ToString();
-        //        Console.WriteLine("Process stopped. Name: " + processName + " | ID: " + processID);
-        //    }
-        //}
+        private void ProcessStartEvent_EventArrived(object sender, EventArrivedEventArgs e)
+        {
+            string processName = e.NewEvent.Properties["ProcessName"].Value.ToString();
+            if (processName == "scrcpy.exe")
+            {
+                //int processID = Convert.ToInt32(e.NewEvent.Properties["ProcessID"].Value);
+                //Process scrcpyProcess = Process.GetProcessById(processID);
+                //List<string> deviceSerials = this.GetDeviceSerials();
+                //// Get all exist old devices
+                //List<Device> oldDevices = this.devices.FindAll(d => deviceSerials.Exists(serial => d.Serial == serial));
+                //string newSerialDevice = deviceSerials.Find(serial => oldDevices.Exists(d => d.Serial != serial));
+                string processID = Convert.ToInt32(e.NewEvent.Properties["ProcessID"].Value).ToString();
+                Console.WriteLine("Process stopped. Name: " + processName + " | ID: " + processID);
+            }
+        }
+        private void ProcessStopEvent_EventArrived(object sender, EventArrivedEventArgs e)
+        {
+            string processName = e.NewEvent.Properties["ProcessName"].Value.ToString();
+            if (processName == "scrcpy.exe")
+            {
+                string processID = Convert.ToInt32(e.NewEvent.Properties["ProcessID"].Value).ToString();
+                Console.WriteLine("Process stopped. Name: " + processName + " | ID: " + processID);
+            }
+        }
 
         public void DisplayDevices()
         {
@@ -178,8 +181,8 @@ namespace DisplayDevices
 
         private void DisplayScreen()
         {
-            List<string> deviceSerials = this.GetDeviceSerials();
-            int numDevice = deviceSerials.Count;
+            this.deviceSerials = this.GetDeviceSerials();
+            int numDevice = this.deviceSerials.Count;
             int columnDisp = this.numDeviceColumn;
             if (columnDisp < DEFAULT_COLUMN || numDevice < DEFAULT_COLUMN)
             {
@@ -374,13 +377,13 @@ namespace DisplayDevices
         // Get devices serial from adb devices command and display
         private void InitDevices()
         {
-            List<string> deviceSerials = this.GetDeviceSerials();
+            this.deviceSerials = this.GetDeviceSerials();
             int length = deviceSerials.Count;
             int col = 0;
             int row = 0;
             for (int i = 0; i < length; i++)
             {
-                this.ApplyNewDevice(deviceSerials[i], col, row);
+                this.ApplyNewDevice(this.deviceSerials[i], col, row);
                 col++;
                 if (col == NumDeviceColumn)
                 {
@@ -410,14 +413,14 @@ namespace DisplayDevices
 
         private void RefreshToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            this.ReloadScreen();
+            // this.ReloadScreen();
         }
 
         private void ReloadScreen()
         {
-            List<string> deviceSerials = this.GetDeviceSerials();
+            this.deviceSerials = this.GetDeviceSerials();
             // Get all exist old devices
-            List<Device> oldDevices = this.devices.FindAll(d => deviceSerials.Exists(serial => d.Serial == serial));
+            List<Device> oldDevices = this.devices.FindAll(d => this.deviceSerials.Exists(serial => d.Serial == serial));
             foreach (Device oldDevice in oldDevices)
             {
                 int index = this.devices.FindIndex(d => d.Serial == oldDevice.Serial);
@@ -432,7 +435,7 @@ namespace DisplayDevices
                     this.ReApplyOldDevice(oldDevice.Serial, col, row);
                 }
             }
-            List<string> newDeviceSerials = deviceSerials.FindAll(serial => oldDevices.Exists(d => d.Serial != serial));
+            List<string> newDeviceSerials = this.deviceSerials.FindAll(serial => oldDevices.Exists(d => d.Serial != serial));
             foreach (string serial in newDeviceSerials)
             {
                 int index = this.devices.FindIndex(d => d.Serial == serial);
@@ -502,7 +505,85 @@ namespace DisplayDevices
 
         private void OnTimedEvent(Object source, System.Timers.ElapsedEventArgs e)
         {
-            this.ReloadScreen();
+            // this.ReloadScreen();
+            List<String> deviceSerials = this.GetDeviceSerials();
+            // for new devices
+            List<String> newSerials = deviceSerials.FindAll(s => !this.deviceSerials.Exists(serial => s == serial));
+            this.deviceSerials = deviceSerials;
+            if (0 < newSerials.Count)
+            {
+                for (int i = 0; i < newSerials.Count; i++)
+                {
+                    int index = this.devices.FindIndex(d => d.Serial == newSerials[i]);
+                    // this is new device
+                    if (index == -1)
+                    {
+                        index = this.devices.Count + i;
+                        int col = index % this.NumDeviceColumn;
+                        int row = index / this.NumDeviceColumn;
+                        this.ApplyNewDevice(newSerials[i], col, row);
+                    }
+                    else
+                    {
+                        Device oldDevice = this.devices[i];
+                        // old device but not initialize IntPtr
+                        int col = index % this.NumDeviceColumn;
+                        int row = index / this.NumDeviceColumn;
+                        if (oldDevice.IntPtr.Equals(IntPtr.Zero))
+                        {
+                            this.ApplyNewDevice(oldDevice.Serial, col, row);
+                        }
+                        else if (oldDevice.Process.HasExited)
+                        {
+                            this.ReApplyOldDevice(oldDevice.Serial, col, row);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < deviceSerials.Count; i++)
+                {
+                    int index = this.devices.FindIndex(d => d.Serial == deviceSerials[i]);
+                    Device oldDevice = this.devices[i];
+                    // old device but not initialize IntPtr
+                    int col = index % this.NumDeviceColumn;
+                    int row = index / this.NumDeviceColumn;
+                    //if (oldDevice.IntPtr.Equals(IntPtr.Zero))
+                    //{
+                    //    this.ApplyNewDevice(oldDevice.Serial, col, row);
+                    //} else
+                    if (oldDevice.Process.HasExited)
+                    {
+                        this.ReApplyOldDevice(oldDevice.Serial, col, row);
+                    }
+                }
+            }
+            int numDevice = deviceSerials.Count;
+            int columnDisp = this.numDeviceColumn;
+            if (columnDisp < DEFAULT_COLUMN || numDevice < DEFAULT_COLUMN)
+            {
+                columnDisp = DEFAULT_COLUMN;
+            }
+            else if (numDevice < this.numDeviceColumn)
+            {
+                columnDisp = numDevice;
+            }
+            int rowDisp = numDevice / columnDisp;
+            if (numDevice % columnDisp != 0)
+            {
+                rowDisp += 1;
+            }
+            int paddingFromRight = 0;
+            if (1 < columnDisp)
+            {
+                paddingFromRight = columnDisp * (PADDING_FROM_RIGHT + columnDisp);
+            }
+            if (numDevice != 0)
+            {
+                this.Size = new Size(columnDisp * DEVICE_WIDTH_FORM - paddingFromRight, rowDisp * DEVICE_HEIGHT_FORM + DEVICE_MARGIN_TOP);
+                this.AutoScrollMinSize = new Size(0, rowDisp * DEVICE_HEIGHT_FORM + DEVICE_MARGIN_TOP);
+            }
         }
     }
 }

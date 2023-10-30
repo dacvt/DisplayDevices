@@ -127,8 +127,21 @@ namespace DisplayDevices
             string processName = e.NewEvent.Properties["ProcessName"].Value.ToString();
             if (processName == "scrcpy.exe")
             {
-                string processID = Convert.ToInt32(e.NewEvent.Properties["ProcessID"].Value).ToString();
+                int ProcessID = Convert.ToInt32(e.NewEvent.Properties["ProcessID"].Value);
+                string processID = ProcessID.ToString();
                 Console.WriteLine("Process stopped. Name: " + processName + " | ID: " + processID);
+                for (int i = 0; i < this.devices.Count; i++)
+                {
+                    Process process = this.devices[i].Process;
+                    if (process.Id == ProcessID)
+                    {
+                        if (!process.HasExited)
+                        {
+                            process.Kill();
+                            process.Dispose();
+                        }
+                    }
+                }
             }
         }
 
@@ -518,45 +531,37 @@ namespace DisplayDevices
             }
             List<String> deviceSerials = this.GetDeviceSerials();
             // for new devices
-            List<String> newSerials = deviceSerials.FindAll(s => !this.deviceSerials.Exists(serial => String.Equals(s, serial)));
-            if (0 < newSerials.Count)
+            String newSerial = deviceSerials.Find(s => !this.deviceSerials.Exists(serial => String.Equals(s, serial)));
+            Console.WriteLine(newSerial);
+            if (newSerial != null)
             {
-                Console.WriteLine("device1: " + deviceSerials[0]);
-                Console.WriteLine("device2: " + newSerials[0]);
-                Console.WriteLine("device" + String.Equals(deviceSerials[0], newSerials[0]));
-            }
-            this.deviceSerials = deviceSerials;
-            if (0 < newSerials.Count)
-            {
-                for (int i = 0; i < newSerials.Count; i++)
+                this.deviceSerials.Add(newSerial);
+                int index = this.devices.FindIndex(d => d.Serial == newSerial);
+                // this is new device
+                if (index == -1)
                 {
-                    int index = this.devices.FindIndex(d => d.Serial == newSerials[i]);
-                    // this is new device
-                    if (index == -1)
+                    index = this.deviceSerials.Count - 1;
+                    int col = index % this.NumDeviceColumn;
+                    int row = index / this.NumDeviceColumn;
+                    Console.WriteLine("ApplyNewDevice!");
+                    this.ApplyNewDevice(newSerial, col, row);
+                }
+                else
+                {
+                    Device oldDevice = this.devices[index];
+                    // old device but not initialize IntPtr
+                    int col = index % this.NumDeviceColumn;
+                    int row = index / this.NumDeviceColumn;
+                    Console.WriteLine(oldDevice.Serial);
+                    if (oldDevice.IntPtr.Equals(IntPtr.Zero))
                     {
-                        index = this.devices.Count + i;
-                        int col = index % this.NumDeviceColumn;
-                        int row = index / this.NumDeviceColumn;
                         Console.WriteLine("ApplyNewDevice!");
-                        this.ApplyNewDevice(newSerials[i], col, row);
+                        this.ApplyNewDevice(oldDevice.Serial, col, row);
                     }
-                    else
+                    else // if (oldDevice.Process.HasExited)
                     {
-                        Device oldDevice = this.devices[index];
-                        // old device but not initialize IntPtr
-                        int col = index % this.NumDeviceColumn;
-                        int row = index / this.NumDeviceColumn;
-                        Console.WriteLine(oldDevice.Serial);
-                        if (oldDevice.IntPtr.Equals(IntPtr.Zero))
-                        {
-                            Console.WriteLine("ApplyNewDevice!");
-                            this.ApplyNewDevice(oldDevice.Serial, col, row);
-                        }
-                        else // if (oldDevice.Process.HasExited)
-                        {
-                            Console.WriteLine("ReApplyOldDevice!");
-                            this.ReApplyOldDevice(oldDevice.Serial, col, row);
-                        }
+                        Console.WriteLine("ReApplyOldDevice!");
+                        this.ReApplyOldDevice(oldDevice.Serial, col, row);
                     }
                 }
             }
@@ -565,7 +570,7 @@ namespace DisplayDevices
                 for (int i = 0; i < deviceSerials.Count; i++)
                 {
                     int index = this.devices.FindIndex(d => d.Serial == deviceSerials[i]);
-                    Device oldDevice = this.devices[i];
+                    Device oldDevice = this.devices[index];
                     // old device but not initialize IntPtr
                     int col = index % this.NumDeviceColumn;
                     int row = index / this.NumDeviceColumn;
@@ -573,14 +578,15 @@ namespace DisplayDevices
                     {
                         Console.WriteLine("ApplyNewDevice!");
                         this.ApplyNewDevice(oldDevice.Serial, col, row);
-                    } else if (oldDevice.Process.HasExited)
+                    }
+                    else if (oldDevice.Process.HasExited)
                     {
                         Console.WriteLine("ReApplyOldDevice!");
                         this.ReApplyOldDevice(oldDevice.Serial, col, row);
                     }
                 }
             }
-            int numDevice = this.devices.Count;
+            int numDevice = this.deviceSerials.Count;
             int columnDisp = this.numDeviceColumn;
             if (columnDisp < DEFAULT_COLUMN || numDevice < DEFAULT_COLUMN)
             {
